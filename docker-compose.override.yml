@@ -7,6 +7,7 @@ services:
   openclaw-gateway:
     image: ${OPENCLAW_IMAGE:-openclaw:local}
     environment:
+      NODE_USE_ENV_PROXY: 1
       HTTP_PROXY:  http://vless-proxy:3128
       HTTPS_PROXY: http://vless-proxy:3128
       NO_PROXY: localhost,127.0.0.1,::1,.local
@@ -35,6 +36,7 @@ services:
 
   openclaw-cli:
     environment:
+      NODE_USE_ENV_PROXY: 1
       HTTP_PROXY:  http://vless-proxy:3128
       HTTPS_PROXY: http://vless-proxy:3128
       NO_PROXY: localhost,127.0.0.1,::1,.local
