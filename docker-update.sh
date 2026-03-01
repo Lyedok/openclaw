@@ -11,7 +11,14 @@ docker run --rm \
   -v "$(cd "$REPO_DIR" && pwd)":/repo \
   -w /repo \
   "$GIT_IMAGE" \
-  sh -lc "git checkout $BRANCH && git pull origin $BRANCH"
+  checkout "$BRANCH"
+
+docker run --rm \
+  -v "$(cd "$REPO_DIR" && pwd)":/repo \
+  -w /repo \
+  "$GIT_IMAGE" \
+  pull origin "$BRANCH"
+
 STEP_END=$(date +%s)
 echo "✅ Шаг 1: git pull выполнен успешно за $((STEP_END - STEP_START)) сек."
 
