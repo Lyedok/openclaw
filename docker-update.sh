@@ -9,12 +9,14 @@ GIT_IMAGE="alpine/git:latest"
 STEP_START=$(date +%s)
 docker run --rm \
   -v "$(cd "$REPO_DIR" && pwd)":/repo \
+  -v "$HOME/.ssh":/root/.ssh:ro \
   -w /repo \
   "$GIT_IMAGE" \
   checkout "$BRANCH"
 
 docker run --rm \
   -v "$(cd "$REPO_DIR" && pwd)":/repo \
+  -v "$HOME/.ssh":/root/.ssh:ro \
   -w /repo \
   "$GIT_IMAGE" \
   pull origin "$BRANCH"

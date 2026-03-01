@@ -35,8 +35,8 @@ RUN mkdir -p "${PNPM_HOME}" && chown -R root:root "${PNPM_HOME}" && chmod -R 755
 WORKDIR /app
 
 # Копируем исходники
-COPY --chown=node:node . .
-USER node
+COPY . .
+
 ENV OPENCLAW_PREFER_PNPM=1
 ENV NODE_ENV=production
 ENV CI=true
@@ -46,6 +46,8 @@ RUN pnpm install --frozen-lockfile && \
     pnpm ui:build && \
     pnpm prune --prod && \
     pnpm store prune
+
+USER node
 
 CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
 # -------------------------
