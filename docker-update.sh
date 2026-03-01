@@ -17,7 +17,7 @@ echo "✅ Шаг 1: git pull выполнен успешно за $((STEP_END - 
 
 # 2) build Dockerfile в репе
 STEP_START=$(date +%s)
-docker build -t openclaw:local "$REPO_DIR"
+docker build -t openclaw:local -f "$REPO_DIR/Dockerfile.mod" "$REPO_DIR"
 STEP_END=$(date +%s)
 echo "✅ Шаг 2: docker build выполнен успешно за $((STEP_END - STEP_START)) сек."
 
