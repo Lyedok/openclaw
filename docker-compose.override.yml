@@ -1,0 +1,56 @@
+networks:
+  proxynet:
+    external: true
+    name: proxynet
+
+services:
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE:-openclaw:local}
+    environment:
+      CLAUDE_AI_SESSION_KEY: !reset null
+      CLAUDE_WEB_SESSION_KEY: !reset null
+      CLAUDE_WEB_COOKIE: !reset null
+      HTTP_PROXY:  http://vless-proxy:3128
+      HTTPS_PROXY: http://vless-proxy:3128
+      NO_PROXY: localhost,127.0.0.1,::1,.local
+      http_proxy:  http://vless-proxy:3128
+      https_proxy: http://vless-proxy:3128
+      no_proxy: localhost,127.0.0.1,::1,.local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - proxynet
+    group_add:
+      - "3003"
+      - "3004"
+      - "0"
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--bind",
+        "${OPENCLAW_GATEWAY_BIND:-lan}",
+        "--port",
+        "18789",
+      ]
+
+  openclaw-cli:
+    environment:
+      CLAUDE_AI_SESSION_KEY: !reset null
+      CLAUDE_WEB_SESSION_KEY: !reset null
+      CLAUDE_WEB_COOKIE: !reset null
+      HTTP_PROXY:  http://vless-proxy:3128
+      HTTPS_PROXY: http://vless-proxy:3128
+      NO_PROXY: localhost,127.0.0.1,::1,.local
+      http_proxy:  http://vless-proxy:3128
+      https_proxy: http://vless-proxy:3128
+      no_proxy: localhost,127.0.0.1,::1,.local
+    networks:
+      - default
+      - proxynet
+    group_add:
+      - "3003"
+      - "3004"
+    entrypoint: ["node", "openclaw.mjs"]
