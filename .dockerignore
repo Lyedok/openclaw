@@ -63,3 +63,4 @@ vendor/
 Dockerfile
 Dockerfile.*
 docker-compose*.yml
+*.sh
