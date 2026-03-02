@@ -32,6 +32,6 @@ echo "✅ Шаг 2: docker build выполнен успешно за $((STEP_EN
 
 # 3) docker compose up -d в той же папке
 STEP_START=$(date +%s)
-docker compose -f "$REPO_DIR/docker-compose.yml" up -d
+docker compose up -d
 STEP_END=$(date +%s)
 echo "✅ Шаг 3: docker compose up -d выполнен успешно за $((STEP_END - STEP_START)) сек."
