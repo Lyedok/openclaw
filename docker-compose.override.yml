@@ -26,7 +26,7 @@ services:
     command:
       [
         "node",
-        "dist/index.js",
+        "openclaw.mjs",
         "gateway",
         "--bind",
         "${OPENCLAW_GATEWAY_BIND:-lan}",
@@ -43,9 +43,6 @@ services:
       http_proxy:  http://vless-proxy:3128
       https_proxy: http://vless-proxy:3128
       no_proxy: localhost,127.0.0.1,::1,.local
-    networks:
-      - default
-      - proxynet
     group_add:
       - "3003"
       - "3004"
