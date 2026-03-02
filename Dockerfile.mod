@@ -8,11 +8,6 @@ FROM node:22-bookworm
 #  AS builder
 
 # Install Bun (required for build scripts)
-RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates jq ripgrep && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
@@ -34,7 +29,7 @@ RUN mkdir -p "${PNPM_HOME}" && chown -R root:root "${PNPM_HOME}" && chmod -R 755
 
 WORKDIR /app
 
-# Копируем исходники
+# Copy and build
 COPY . .
 
 ENV OPENCLAW_PREFER_PNPM=1
@@ -47,6 +42,15 @@ RUN pnpm install --frozen-lockfile && \
     pnpm prune --prod && \
     pnpm store prune
 
+# Install apt packages
+ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates jq ripgrep python3"
+RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Change User
 USER node
 
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
