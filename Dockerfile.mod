@@ -1,6 +1,31 @@
 # stage с готовым docker-cli (+ плагины)
 FROM docker:27-cli AS dockercli
 
+## Прогрев qmd node-llama-cpp
+FROM node:22-bookworm AS qmd-builder
+
+USER root
+
+# Group for download
+RUN groupadd -g 3003 netbuild \
+    && usermod -aG 3003 _apt \
+    && usermod -aG 3003 node
+
+RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates python3 sqlite3 cmake build-essential git && \
+    rm -rf /var/lib/apt/lists/*
+
+USER node
+ENV BUN_INSTALL=/home/node/.bun
+ENV PATH="/home/node/.bun/bin:${PATH}"
+
+RUN curl -fsSL https://bun.sh/install | bash && \
+    bun install -g @tobilu/qmd
+
+# Один раз прогреваем именно qmd
+RUN qmd status || true
+
 # -------------------------
 # Builder: ставим deps, собираем, оставляем только prod node_modules + dist
 # -------------------------
@@ -67,6 +92,7 @@ USER node
 
 ENV BUN_INSTALL=/home/node/.bun
 ENV PATH="/home/node/.bun/bin:${PATH}"
+COPY --from=qmd-builder /home/node/.bun /home/node/.bun
 RUN curl -fsSL https://bun.sh/install | bash && \
     bun install -g @tobilu/qmd && \
     bun install -g agent-browser
