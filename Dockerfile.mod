@@ -31,26 +31,6 @@ RUN groupadd -g 3003 netbuild \
 WORKDIR /app
 RUN chown node:node /app
 
-# Install apt packages
-ARG QMD_APT_PACKAGES="cmake"
-RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $QMD_APT_PACKAGES && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
-
-USER node
-
-ENV BUN_INSTALL=/home/node/.bun
-ENV PATH="/home/node/.bun/bin:${PATH}"
-ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
-
-RUN curl -fsSL https://bun.sh/install | bash && \
-    bun install -g agent-browser && \
-    bun install -g @tobilu/qmd && \
-    qmd status
-
-USER root
 # Copy and build
 COPY --chown=node:node . .
 
@@ -84,6 +64,15 @@ RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
 
 # Change User
 USER node
+
+ENV BUN_INSTALL=/home/node/.bun
+ENV PATH="/home/node/.bun/bin:${PATH}"
+ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
+
+RUN curl -fsSL https://bun.sh/install | bash && \
+    bun install -g agent-browser && \
+    bun install -g @tobilu/qmd && \
+    qmd status
 
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
