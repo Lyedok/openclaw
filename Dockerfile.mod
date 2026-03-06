@@ -1,31 +1,6 @@
 # stage с готовым docker-cli (+ плагины)
 FROM docker:27-cli AS dockercli
 
-## Прогрев qmd node-llama-cpp
-FROM node:22-bookworm AS qmd-builder
-
-USER root
-
-# Group for download
-RUN groupadd -g 3003 netbuild \
-    && usermod -aG 3003 _apt \
-    && usermod -aG 3003 node
-
-RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates python3 sqlite3 cmake build-essential git && \
-    rm -rf /var/lib/apt/lists/*
-
-USER node
-ENV BUN_INSTALL=/home/node/.bun
-ENV PATH="/home/node/.bun/bin:${PATH}"
-
-RUN curl -fsSL https://bun.sh/install | bash && \
-    bun install -g @tobilu/qmd
-
-# Один раз прогреваем именно qmd
-RUN qmd status || true
-
 # -------------------------
 # Builder: ставим deps, собираем, оставляем только prod node_modules + dist
 # -------------------------
@@ -56,6 +31,26 @@ RUN groupadd -g 3003 netbuild \
 WORKDIR /app
 RUN chown node:node /app
 
+# Install apt packages
+ARG QMD_APT_PACKAGES="cmake"
+RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $QMD_APT_PACKAGES && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+USER node
+
+ENV BUN_INSTALL=/home/node/.bun
+ENV PATH="/home/node/.bun/bin:${PATH}"
+ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
+
+RUN curl -fsSL https://bun.sh/install | bash && \
+    bun install -g agent-browser && \
+    bun install -g @tobilu/qmd && \
+    qmd status
+
+USER root
 # Copy and build
 COPY --chown=node:node . .
 
@@ -89,13 +84,6 @@ RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
 
 # Change User
 USER node
-
-ENV BUN_INSTALL=/home/node/.bun
-ENV PATH="/home/node/.bun/bin:${PATH}"
-COPY --from=qmd-builder /home/node/.bun /home/node/.bun
-RUN curl -fsSL https://bun.sh/install | bash && \
-    bun install -g @tobilu/qmd && \
-    bun install -g agent-browser
 
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
