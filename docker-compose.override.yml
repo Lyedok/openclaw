@@ -16,6 +16,7 @@ services:
       no_proxy: localhost,127.0.0.1,::1,.local
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.qmd_cache:/home/node/.cache
     networks:
       - default
       - proxynet
