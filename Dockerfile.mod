@@ -1,6 +1,33 @@
 # stage с готовым docker-cli (+ плагины)
 FROM docker:27-cli AS dockercli
 
+
+## Прогрев qmd node-llama-cpp
+FROM node:22-bookworm AS qmd-builder
+
+USER root
+
+# Group for download
+RUN groupadd -g 3003 netbuild \
+    && usermod -aG 3003 _apt \
+    && usermod -aG 3003 node
+
+RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    cmake && \
+    rm -rf /var/lib/apt/lists/*
+
+USER node
+ENV BUN_INSTALL=/home/node/.bun
+ENV PATH="/home/node/.bun/bin:${PATH}"
+ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
+
+RUN curl -fsSL https://bun.sh/install | bash && \
+    bun install -g @tobilu/qmd
+
+# Один раз прогреваем именно qmd
+RUN qmd status
+
 # -------------------------
 # Builder: ставим deps, собираем, оставляем только prod node_modules + dist
 # -------------------------
@@ -31,7 +58,6 @@ RUN groupadd -g 3003 netbuild \
 WORKDIR /app
 RUN chown node:node /app
 
-USER root
 # Copy and build
 COPY --chown=node:node . .
 
@@ -51,7 +77,7 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
 ENV NODE_ENV=production
 
 # Install apt packages
-ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates jq ripgrep python3 sqlite3 cmake"
+ARG OPENCLAW_DOCKER_APT_PACKAGES="curl ca-certificates jq ripgrep python3 sqlite3"
 ARG AGENT_BROWSER_APT_PACKAGES="xvfb libxcb-shm0 libx11-xcb1 libx11-6 libxcb1 libxext6 libxrandr2 libxcomposite1 libxcursor1 libxdamage1 libxfixes3 libxi6 libgtk-3-0 libpangocairo-1.0-0 libpango-1.0-0 libatk1.0-0 libcairo-gobject2 libcairo2 libgdk-pixbuf-2.0-0 libxrender1 libasound2 libfreetype6 libfontconfig1 libdbus-1-3 libnss3 libnspr4 libatk-bridge2.0-0 libdrm2 libxkbcommon0 libatspi2.0-0 libcups2 libxshmfence1 libgbm1"
 RUN echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
     apt-get update && \
@@ -70,10 +96,8 @@ ENV BUN_INSTALL=/home/node/.bun
 ENV PATH="/home/node/.bun/bin:${PATH}"
 ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
 
-RUN curl -fsSL https://bun.sh/install | bash && \
-    bun install -g @tobilu/qmd && \
-    bun install -g agent-browser && \
-    qmd status
+COPY --from=qmd-builder /home/node/.bun /home/node/.bun
+RUN bun install -g agent-browser
 
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
