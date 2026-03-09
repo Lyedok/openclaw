@@ -127,6 +127,7 @@ RUN groupadd -g 3003 netbuild && \
     usermod -aG 3003 node
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
+    echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
     set -eux; \
     base_packages="procps hostname curl git openssl ca-certificates"; \
     extra_packages="${OPENCLAW_DOCKER_APT_PACKAGES}"; \
