@@ -5,7 +5,6 @@ FROM docker:27-cli AS dockercli
 # Builder: ставим deps, собираем, оставляем только prod node_modules + dist
 # -------------------------
 FROM node:22-bookworm
-#  AS builder
 
 # Создаём каталог для плагинов
 RUN mkdir -p /usr/local/libexec/docker/cli-plugins
@@ -77,37 +76,3 @@ RUN curl -fsSL https://bun.sh/install | bash && \
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
-# -------------------------
-# Runtime: только то, что нужно для запуска
-# -------------------------
-# FROM node:22-bookworm AS runtime
-
-# # docker-cli и docker compose plugin (как в исходнике)
-# RUN mkdir -p /usr/local/libexec/docker/cli-plugins
-# COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
-# COPY --from=dockercli \
-#   /usr/local/libexec/docker/cli-plugins/docker-compose \
-#   /usr/local/libexec/docker/cli-plugins/docker-compose
-
-# # (опционально) системные пакеты, если нужны во время работы
-# ARG OPENCLAW_DOCKER_APT_PACKAGES="jq ripgrep"
-# RUN if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
-#       echo 'APT::Sandbox::User "root";' > /etc/apt/apt.conf.d/99sandbox-root && \
-#       apt-get update && \
-#       DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
-#       apt-get clean && \
-#       rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
-#     fi
-
-# ENV NODE_ENV=production
-# WORKDIR /app
-
-# # Перекладываем только артефакты
-# COPY --from=builder /app/package.json ./package.json
-# COPY --from=builder /app/node_modules ./node_modules
-# COPY --from=builder /app/dist ./dist
-
-# # Security hardening: Run as non-root user
-# USER node
-
-# CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured"]
