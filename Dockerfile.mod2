@@ -115,11 +115,6 @@ WORKDIR /app
 
 RUN chown node:node /app
 
-# Group for download
-RUN groupadd -g 3003 netbuild && \
-    usermod -aG 3003 _apt && \
-    usermod -aG 3003 node
-
 # Install extra runtime packages conditionally in a single apt layer.
 # This keeps cache behavior predictable and ensures apt metadata is cleaned
 # in the same layer where it is created.
