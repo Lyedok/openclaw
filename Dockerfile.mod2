@@ -115,24 +115,10 @@ WORKDIR /app
 
 RUN chown node:node /app
 
-COPY --from=runtime-assets --chown=node:node /app/dist ./dist
-COPY --from=runtime-assets --chown=node:node /app/node_modules ./node_modules
-COPY --from=runtime-assets --chown=node:node /app/package.json ./
-COPY --from=runtime-assets --chown=node:node /app/openclaw.mjs ./
-COPY --from=runtime-assets --chown=node:node /app/extensions ./extensions
-COPY --from=runtime-assets --chown=node:node /app/skills ./skills
-COPY --from=runtime-assets --chown=node:node /app/docs ./docs
-
-# Keep pnpm available in the runtime image for container-local workflows.
-ENV COREPACK_HOME=/usr/local/share/corepack
-RUN install -d -m 0755 "$COREPACK_HOME" && \
-    corepack enable && \
-    corepack prepare "$(node -p "require('./package.json').packageManager")" --activate && \
-    chmod -R a+rX "$COREPACK_HOME"
-
-# ------------------------------------------------------------------
-# Custom defaults migrated from your Dockerfile
-# ------------------------------------------------------------------
+# Group for download
+RUN groupadd -g 3003 netbuild && \
+    usermod -aG 3003 _apt && \
+    usermod -aG 3003 node
 
 # Install extra runtime packages conditionally in a single apt layer.
 # This keeps cache behavior predictable and ensures apt metadata is cleaned
@@ -193,16 +179,33 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
     apt-get clean; \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /tmp/*
 
-# Group for download
-RUN groupadd -g 3003 netbuild && \
-    usermod -aG 3003 _apt && \
-    usermod -aG 3003 node
+USER node
 
 # Bun in runtime is needed because your old image installed
 # @tobilu/qmd and agent-browser globally there.
 ENV BUN_INSTALL=/home/node/.bun
 ENV PATH="/home/node/.bun/bin:${PATH}"
 ENV NODE_LLAMA_CPP_CMAKE_OPTION_GGML_CUDA=OFF
+RUN curl -fsSL https://bun.sh/install | bash && \
+    bun install -g @tobilu/qmd && \
+    bun install -g agent-browser && \
+    qmd status
+
+USER root
+COPY --from=runtime-assets --chown=node:node /app/dist ./dist
+COPY --from=runtime-assets --chown=node:node /app/node_modules ./node_modules
+COPY --from=runtime-assets --chown=node:node /app/package.json ./
+COPY --from=runtime-assets --chown=node:node /app/openclaw.mjs ./
+COPY --from=runtime-assets --chown=node:node /app/extensions ./extensions
+COPY --from=runtime-assets --chown=node:node /app/skills ./skills
+COPY --from=runtime-assets --chown=node:node /app/docs ./docs
+
+# Keep pnpm available in the runtime image for container-local workflows.
+ENV COREPACK_HOME=/usr/local/share/corepack
+RUN install -d -m 0755 "$COREPACK_HOME" && \
+    corepack enable && \
+    corepack prepare "$(node -p "require('./package.json').packageManager")" --activate && \
+    chmod -R a+rX "$COREPACK_HOME"
 
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw \
  && chmod 755 /app/openclaw.mjs
@@ -211,11 +214,6 @@ ENV NODE_ENV=production
 
 # Security hardening: Run as non-root user
 USER node
-
-RUN curl -fsSL https://bun.sh/install | bash && \
-    bun install -g @tobilu/qmd && \
-    bun install -g agent-browser && \
-    qmd status
 
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
